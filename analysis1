@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun 14 10:18:17 2019
+
+@author: jha
+"""
+
+
+#%%
+import csv
+import mysql.connector as mariadb
+from tabulate import tabulate
+
+
+amrdb= mariadb.connect(
+        host="localhost",
+        user="root",
+        passwd="Sukhoi@90",
+        database ="myamr"
+        )
+cursor = amrdb.cursor(buffered=True) # else it fetches one row for everytime it is executed 
+print("We are at line 20, we have connection, lets begin")
+
+#%%
+
+#%%
+numrows= cursor.execute("SELECT AST_phenotypes FROM Salmonellatest GROUP BY AST_phenotypes")
+print("Selected %s rows" %numrows)
+print("Selected %s rows " %cursor.rowcount)
+rows =cursor.fetchall()#fetch all rows at once
+for row in rows:
+    for col in rows:
+        print("%s,"%col)
+    print("\n")
+    
+#%%    
+    
+    
+    
+#%%   
+numrows= cursor.execute("SELECT AST_phenotypes, AMR_genotypes FROM Salmonellatest WHERE LENGTH(AST_phenotypes) >24 LIMIT 2 ")
+print("Selected %s rows" %numrows)
+print("Selected %s rows " %cursor.rowcount)
+rows =cursor.fetchall()#fetch all rows at once
+print(tabulate(rows, headers=['AST_phenotype', 'AMR_genotype'], tablefmt='psql'))  
+#%%
+
+
+#creating a table where all AST_phenotypes have values 
+#%%
+new_table= cursor.execute("CREATE TABLE IF NOT EXISTS sal_ast AS SELECT * FROM Salmonellatest WHERE LENGTH(AST_phenotypes) >20")
+print("Selected %s rows" %numrows)
+print("Selected %s rows " %cursor.rowcount)
+#rows =cursor.fetchall()#fetch all rows at once
+print(tabulate(rows, headers=['strain','AST_phenotype', 'AMR_genotype'], tablefmt='psql'))
+#%%
+
+#check to see if the new table has all datas
+#%%
+import pandas as pd
+numrows= cursor.execute("SELECT AST_phenotypes FROM salamr ")
+print("Selected %s rows" %numrows)
+print("Selected %s rows " %cursor.rowcount)
+rows =cursor.fetchall()#fetch all rows at once
+print(tabulate(rows, headers=['AST_phenotype'], tablefmt='psql'))
+#%%
+
+#splitting the AST_phenotype column values into separate columns of the table 
+#%%
+df = pd.DataFrame(rows)
+#print ("the pandas dataframe ",df
+       
+df.columns=["AST_phenotypes"]
+df.head()
+split_df= df['AST_phenotypes'].str.split(',', expand= True)
+split_df.head()
+#split_df = split_df.drop(split_df.columns[[23]], axis=1) 
+#%%
+
+
+
+
+
+
+
+
+
+
+#creating column names by using the most frequent term in each column 
+#%%
+col_name=[]
+for column in split_df:
+    most_frequent_word=split_df[column].mode()
+    print("we are at line 80 in code",most_frequent_word)
+    mfw=most_frequent_word.iloc[0]
+    col_name.append(mfw)
+    print("we are at line 83 in code and we are printing the list of columns names ", col_name)
+ #%%
+
+#%%  
+ncn=[] 
+for string in col_name:
+    #print (string)
+    #string.split(' = ',1) 
+    ncn.append(string.split('=',1)[0])
+print ("at line number 89" ,ncn)
+    
+
+#%%
+
+#%%
+split_df.columns=ncn
+split_df.head()
+header =split_df.columns
+print (header)
+#%%
+#%%
+
+#%%
+    
+    
+    
+#%%:
+split_df.head()
+   
+            
+#%%            
+
+
+#%%
+
+
+
+from sqlalchemy import create_engine
+import pandas as pd
+cnx = create_engine('mysql+pymysql://root:Sukhoi@90@localhost/myamr')
+try:
+    #this will fail if there is a new column
+    split_df.to_sql(name='salamr', con=cnx, if_exists = 'append', index=False)
+except:
+    data = pd.read_sql('SELECT * FROM salamr', cnx)
+    data.head()
+    df2 = pd.concat([data,split_df],sort=False,axis=1)
+    print("at line 133 in code : the dataframe has been concatenated")
+    df2.to_sql(name='salamr', con=cnx, if_exists = 'replace', index=False)
+    print("at line 136 in code : ")
+
+
+
+
+#%%
+
+#%%
+    data.head()
+    split_df.head()
+
+    astdf= pd.concat([df,split_df],axis=1)
+    astdf.head()
+    astdf.to_sql(name='salast', con=cnx, if_exists = 'replace', index=False)
+      
+#%%    
+
+#%%
+numrows= cursor.execute("SELECT * FROM salast LEFT JOIN salamr ON salast.AST_phenotypes=salamr.AST_phenotypes  UNION SELECT * FROM salast RIGHT JOIN salamr ON salast.AST_phenotypes=salamr.AST_phenotypes;")
+print("Selected %s rows" %numrows)
+print("Selected %s rows " %cursor.rowcount)
+ 
+rows =cursor.fetchall()#fetch all rows at once
+#print(tabulate(rows, headers=['strain','AST_phenotype', 'AMR_genotype'], tablefmt='psql'))    
+#df3 = pd.DataFrame(rows) 
+# 
+#df3.head()  
+#    
+    
+    
+#%%
+
+
+
+#%%
+from sqlalchemy import create_engine
+import pandas as pd
+cnx = create_engine('mysql+pymysql://root:Sukhoi@90@localhost/myamr')
+#df3.to_sql(name='salall', con=cnx, if_exists = 'replace', index=False)
+df_sal_ast= pd.read_sql('sal_ast',cnx)
+
+#%%
+
+
+
+#%%
+new_table= cursor.execute("CREATE TABLE salamrother AS SELECT * FROM Salmonellatest WHERE LENGTH(AST_phenotypes) >20")
+print("Selected %s rows" %numrows)
+print("Selected %s rows " %cursor.rowcount)
+rows =cursor.fetchall()#fetch all rows at once
+print(tabulate(rows, headers=['strain','AST_phenotype', 'AMR_genotype'], tablefmt='psql'))
+
+#%%
+
+
+#%%
+    
+#numrows= cursor.execute("SELECT * FROM salamrother")
+#print("Selected %s rows" %numrows)
+#print("Selected %s rows " %cursor.rowcount)
+#rows =cursor.fetchall()#fetch all rows at once
+#import pandas as pd
+#dfsalamrother=pd.DataFrame(rows)
+
+    
+
+
+#%%
+
+
+
+
+
+#%%
+head1=[]
+head1= list(split_df.columns)
+
+#print ("AT line 181 printing head1",head1, len(head1))
+head2 =[]
+salamrdf=pd.read_sql_table('salamr', con=cnx)
+head2= list(salamrdf.columns)
+
+#print ("AT line 184 printing head1",head2, len(head2))
+#salamrdf.head()
+header=[]
+header= head1+head2
+#print(" \n at line in code 231 \n", header)
+#%%
+
+
+#%%
+
+split_df.head(2)
+
+salamrdf.head(2)
+salalldf.head(2)
+
+#%%
+
+
+
+
+
+#%%
+salalldf=pd.read_sql_table('salall', con=cnx)
+salalldf.head(2)
+salalldf = salalldf.drop(salalldf.columns[[1]], axis=1) 
+print("after dropping column 1  at line 239 in code", salalldf.head(2))
+salalldf.columns=header
+
+#%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
